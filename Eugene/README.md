@@ -60,10 +60,7 @@ Enjoy!
 # AWS Lambda Monitoring with CDK and Synthetics Canary
 ## Update 4/8/25
 
-This project integrates an AWS Lambda function and an AWS Synthetics Canary 
-using AWS CDK (Python) to monitor an external web resource. The Canary 
-simulates a real user visiting a webpage every 5 minutes, helping 
-track the availability and performance of the resource.
+This project integrates an AWS Lambda function and an AWS Synthetics Canary using AWS CDK (Python) to monitor an external web resource. The Canary simulates a real user visiting a webpage every 5 minutes, helping track the availability and performance of the resource.
 
 
 What it does:
@@ -93,9 +90,11 @@ Testing:
     }
 
 Quality Characteristics:
-- Performance: Canary runs every 5 minutes with a 1-minute timeout 
+- Performance: 
+    - Canary runs every 5 minutes with a 1-minute timeout 
     to minimise latency and catch outages quickly.
-- Usability: Canary can be built upon with matrics later on
+- Usability: 
+    - Canary can be built upon with matrics later on
 
 
 Future Improvements:
@@ -103,9 +102,7 @@ Future Improvements:
 
 # AWS - Building the Foundation of DevOps
 ## Update 18/8/25
-This project integrates the availability and latency metrics into the Web Health module.
-The crawler runs periodically every 5 min to write the availability and latency for metrics of a website.
-Using the Cloudwatch it produces a dashboard showing the web health(metrics) of each website.
+This project integrates the availability and latency metrics into the Web Health module. The crawler runs periodically every 5 min to write the availability and latency for metrics of a website. Using the Cloudwatch it produces a dashboard showing the web health(metrics) of each website.
 
 
 What it does:
@@ -137,23 +134,70 @@ Testing:
 
 Quality Characteristics:
 - Security: 
-    Uses IAM least privilege by restricting the Lambda function to only
-    the necessary cloudwatch:PutMetricData action. AWS credentials and access are
-    managed through standard AWS identity and permissions.
+    - Uses IAM least privilege by restricting the Lambda function to only the necessary cloudwatch:PutMetricData action. 
+    - AWS credentials and access are managed through standard AWS identity and permissions.
 - Performance: 
-    Canary runs every 5 minutes with a 1-minute timeout to minimise latency and 
-    catch outages quickly.
-    Latency metrics allow performance monitoring of external sites in near real-time.
-    Availability metrics show if the website is a available (1) or not available (0)
+    - Canary runs every 5 minutes with a 1-minute timeout to minimise latency and catch outages quickly.
+    - Latency metrics allow performance monitoring of external sites in near real-time.
+    - Availability metrics show if the website is a available (1) or not available (0)
 - Reliability
-    Lambda and CloudWatch provide built-in fault tolerance. If a site
-    fails, the metric reports unavailability, making outages visible on the dashboard.
-    Scheduled EventBridge rules guarantee regular execution.
+    - Lambda and CloudWatch provide built-in fault tolerance. If a site fails, the metric reports unavailability, making outages visible on the dashboard.
+    - Scheduled EventBridge rules guarantee regular execution.
 - Usability:
-    Results are visible in CloudWatch dashboards, and the code is
-    modular (separate Lambda handler, metric publisher, and CDK stack), making it easy
-    to extend with more sites or metrics in the future.
-
+    - Results are visible in CloudWatch dashboards, and the code is modular (separate Lambda handler, metric publisher, and CDK stack), making it easy to extend with more sites or metrics in the future.
 
 Future Improvements:
-- The log removal policy is not functioning, and the test fails for the third website.
+- The log removal policy is not functioning
+- Testing fails for the third website (fixed now due to timeout of lambda being too short)
+- Add a third metric to test for.
+
+# AWS - Building the Foundation of DevOps
+## Update 22/8/25
+This update involves the additoinal metric response size into the Web Health Module. It also includes the ability to create a Cloudwatch dashboard to monitor all three metrics of three websites give. It includes alarms that alert the user if the latency or response size is too much to handle or if the availability is less than 1, meaning not available. It also includes a constants file to to centralize configuration values (such as URLs, thresholds, and metric names), and has fixed all the future improvements from the previous update.
+
+What it does:
+- Display the availabilty, latency, and response size of Google, Youtube and Facebook websites
+- Creates its on Cloudwatch dashboard
+- Publishes metrics to CloudWatch
+- Display results in a CloudWatch dashboard
+
+How to deploy:
+- AWS CLI configured with valid credientials
+- Python 3.11+
+- AWS CDK v2
+- Node.js (for Canary Puppeteer runtime)
+
+Steps to deploy:
+- On visual studio code, type cdk synth, then cdk deploy. This will deploy the code onto
+the Lambda website.
+-  Once on the lambda website your code will appear in a function, and once you make a test,
+it will test the websites.
+- After testing, go to the Cloudwatch dashboard and you will see three graphs each representing a metric, with a key indicating each website.
+
+Testing:
+- After pressing the test button on lambda, go to cloudwatch -> all alarms, this will show which metrics have triggered an alarm.
+- Also after pressing the test button, go to cloudwatch -> Dashboards -> URL_Monitor_Dashboard, you should all the metrics of the websites, shown in the graphs.
+
+Quality Characteristics:
+- Security: 
+    - Uses IAM least privilege by restricting the Lambda function to only the necessary cloudwatch:PutMetricData action. 
+    - AWS credentials and access are managed through standard AWS identity and permissions.
+
+- Performance: 
+    - Canary runs every 5 minutes with a 1-minute timeout to minimise latency and catch outages quickly.
+    - Latency metrics allow performance monitoring of external sites in near real-time.
+    - Availability metrics show if the website is a available (1) or not available (0).
+    - Response size metric allows monitoring of abnormal increases/decreases in webpage content size that may indicate outages, errors, or changes.
+    - The metrics are checked every minuete to provide more data points to capture and display on the graphs.
+    - Scalability: It can perform metrics on any number of websites, as long as you add the website link in the url list that is on WHLambda and stack file.
+
+- Reliability
+    - Lambda and CloudWatch provide built-in fault tolerance. If a site fails, the user will have an alarm appear in Cloudwatch indicating that it has been set off. 
+    - The metric reports if the website exceeds the limit on response size and latency, or if the website is not available.
+
+- Usability:
+    - Results are visible in CloudWatch dashboards, and the code is modular (separate Lambda handler, metric publisher, and CDK stack), making it easy to extend with more sites or metrics in the future.
+
+Future Improvements:
+- Add SMS/email feature where the user is to be notified if a metric's alarm has been sent off.
+- Implement another lambda (Dynamo DB) to write alarm information into a Dynamo Database, from this we want to log the information in a Dynamo DB.
