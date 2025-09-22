@@ -1,21 +1,20 @@
 # import necessary libraries
-from tkinter import RIGHT
 from aws_cdk import (
-    RemovalPolicy,
     Stack,
     Duration,
+    RemovalPolicy,
     aws_lambda as _lambda,
     aws_events as events_,
     aws_events_targets as targets_,
     aws_iam as iam,
-    aws_cloudwatch as cloudwatch,
     aws_sns as sns,
     aws_sns_subscriptions as subs,
+    aws_cloudwatch as cloudwatch,
     aws_cloudwatch_actions as cw_actions
 )
 from constructs import Construct
-import os
-import json
+import os, json, re
+from aws_cdk.aws_dynamodb import TableV2, Attribute, AttributeType, Billing, TableEncryptionV2
 
 NAMESPACE = "THOMASPROJECT_WSU2025"
 
@@ -24,35 +23,48 @@ class DangQuocToanStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
         super().__init__(scope, construct_id, **kwargs)
 
-        #--- Load website so we can create per-URL alarms/widgets
+        #--- 1. Load website so we can create per-URL alarms/widgets
         websites_path = os.path.join(os.path.dirname(__file__), "..", "modules", "website.json")
         with open(websites_path, "r", encoding = "utf-8") as f:
             website_list = [entry["url"] for entry in json.load(f)]
         
-        # Create and define the Lambda function
+        #--- 2. Create and define the Lambda function
+        # Reference: AWS CDK Python – aws_lambda.Function
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_lambda/README.html#function
         fn = _lambda.Function(self, "WHlambda",
-            runtime=_lambda.Runtime.PYTHON_3_13,
-            handler="WHLambda.lambda_handler",
-            code=_lambda.Code.from_asset("./modules"),
-            timeout=Duration.seconds(30),
+            runtime=_lambda.Runtime.PYTHON_3_13,  # see aws_lambda.Runtime options
+            handler="WHLambda.lambda_handler",    # see aws_lambda.Function handler param
+            code=_lambda.Code.from_asset(
+                os.path.join(os.path.dirname(__file__), "..", "modules")
+            ),  # see aws_lambda.Code.from_asset
+            timeout=Duration.seconds(30),  # see aws_lambda.Function timeout param
         )
 
         # Give the Lambda function permissions to publish metrics to CLoudWatch
+        # Reference: AWS CDK Python – iam.PolicyStatement
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_iam/README.html#policystatement
         fn.add_to_role_policy(
             iam.PolicyStatement(
-                actions=["cloudwatch:PutMetricData"],
+                actions=["cloudwatch:PutMetricData"],   # cloudwatch metric permission
                 resources=["*"],
             )
         )
-
+        
+        # --- Attach basic Lambda execution role ---
+        # Reference: AWS CDK Python – iam.ManagedPolicy.from_aws_managed_policy_name
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_iam/README.html#managedpolicy
         fn.role.add_managed_policy(
             iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
         )
         
         # Schedule for scheduled events rules
-        schedule= events_.Schedule.rate(Duration.minutes(5))
+        # Reference: AWS CDK Python – aws_events.Rule
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_events/README.html#rule
+        schedule= events_.Schedule.rate(Duration.minutes(5))   # Reference: aws_events.Schedule.rate
 
         # Create the event target
+        # Reference: AWS CDK Python – aws_events_targets.LambdaFunction
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_events_targets/README.html#lambdafunction
         target = targets_.LambdaFunction(fn)
         
         # AWS evetns_.Rule
@@ -63,11 +75,62 @@ class DangQuocToanStack(Stack):
             description="This is a test rule that invokes a lambda function every 5 minutes"
         )
 
-        # SNS Topic for alarms (uncomment and add your email)
+        #--- 3. SNS Topic for alarms (uncomment and add your email)
+        # Reference: AWS CDK Python – aws_sns.Topic
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_sns/README.html#topic
         topic = sns.Topic(self, "WebHealthAlarms", topic_name="web-health-alarms")
+        # Reference: AWS CDK Python – aws_sns_subscriptions.EmailSubscription
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_sns_subscriptions/README.html#emailsubscription
         topic.add_subscription(subs.EmailSubscription("22119278@student.westernsydney.edu.au"))
 
-        # Create CloudWatch metrics with dimension for each URL
+        #--- 4. DynamoDB for alarm logs
+            # Reference: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_dynamodb/TableV2.html
+        alarm_log_table = TableV2(
+            self, "AlarmLogTable",
+            table_name="AlarmLogTable",
+            partition_key=Attribute(name="AlarmName", type=AttributeType.STRING),
+            sort_key=Attribute(name="Timestamp", type=AttributeType.STRING),
+            billing=Billing.on_demand(),
+            encryption=TableEncryptionV2.dynamo_owned_key(),
+        )
+        alarm_log_table.apply_removal_policy(RemovalPolicy.DESTROY)
+
+            #--- 5. Logger Lambda: subscribe to SNS and writes to DynamoDN
+            # Reference:
+        log_lambda = _lambda.Function(
+            self, "LogAlarmLambda",
+            runtime=_lambda.Runtime.PYTHON_3_13,
+            handler="LogAlarmLambda.lambda_handler",
+            code=_lambda.Code.from_asset(
+                os.path.join(os.path.dirname(__file__), "..", "modules")
+            ),
+            timeout=Duration.seconds(30),
+            environment={"TABLE_NAME": alarm_log_table.table_name}
+        )
+
+        # Allow Lambda to write to the table
+        alarm_log_table.grant_write_data(log_lambda)
+
+        # Explicitly allow LogAlarmLambda to PutItem into the DynamoDB table
+        log_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=[
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                ],
+                resources=[
+                    alarm_log_table.table_arn
+                ]
+            )
+        )
+
+        # Subscribe Lambda to SNS topic                              
+        topic.add_subscription(subs.LambdaSubscription(log_lambda))
+
+
+        #--- 6. Create CloudWatch metrics with dimension for each URL
+        # Reference: AWS CDK Python – aws_cloudwatch.Metric
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudwatch/README.html#metric
         def metric_availability(url: str) -> cloudwatch.Metric:
             return cloudwatch.Metric(
                 namespace=NAMESPACE,
@@ -98,17 +161,16 @@ class DangQuocToanStack(Stack):
                 statistic="avg"
             )
         
-        # --- Alarms per URL
-        alarms = []
+        #--- 7. Alarms per URL
         for url in website_list:
-            avail = metric_availability(url)
-            lat= metric_latency(url)
-            stat = metric_status(url)
-
+            safe_id = self._sanitize_id(url)
+            
         # Availability alarm: alarm when < 1 (site down or non-2xx/3xx)
+        # Reference: AWS CDK Python – aws_cloudwatch.Alarm
+            # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudwatch/README.html#alarm
             avail_alarm = cloudwatch.Alarm(
-            self, f"AvailabilityAlarm-{self._sanitize_id(url)}",
-            metric=avail,
+            self, f"AvailabilityAlarm-{safe_id}",
+            metric=metric_availability(url),
             threshold=1,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             evaluation_periods=1,
@@ -119,8 +181,8 @@ class DangQuocToanStack(Stack):
 
         # Latency alarm: > 2000 ms (tune as needed)
             latency_alarm = cloudwatch.Alarm(
-            self, f"LatencyAlarm-{self._sanitize_id(url)}",
-            metric=lat,
+            self, f"LatencyAlarm-{safe_id}",
+            metric=metric_latency(url),
             threshold=2000,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             evaluation_periods=1,
@@ -131,8 +193,8 @@ class DangQuocToanStack(Stack):
             
         # Create an SNS topic for alarm notifications
             status_alarm = cloudwatch.Alarm(
-            self, f"StatusAlarm-{self._sanitize_id(url)}",
-            metric=stat,
+            self, f"StatusAlarm-{safe_id}",
+            metric=metric_status(url),
             threshold=399,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             evaluation_periods=1,
@@ -140,12 +202,22 @@ class DangQuocToanStack(Stack):
             treat_missing_data = cloudwatch.TreatMissingData.BREACHING,
             alarm_description=f"Status > 399 for {url}"
             ) 
+
+            # Link alarms to SNS topic
+            # Reference: AWS CDK Python – aws_cloudwatch_actions.SnsAction
+            # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudwatch_actions/README.html#snsaction
             avail_alarm.add_alarm_action(cw_actions.SnsAction(topic))
             latency_alarm.add_alarm_action(cw_actions.SnsAction(topic))
             status_alarm.add_alarm_action(cw_actions.SnsAction(topic))
-            alarms.extend([avail_alarm, latency_alarm, status_alarm])
+            
 
-        # Create a graph widget for availability metric
+            
+ 
+
+
+        #--- 8. Create a graph widget for availability metric
+         # Reference: AWS CDK Python – aws_cloudwatch.GraphWidget
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudwatch/README.html#graphwidget
         avail_widget = cloudwatch.GraphWidget(
             title = "Availability (avg by URL, 5m)",
             left = [metric_availability(url) for url in website_list],
@@ -170,23 +242,25 @@ class DangQuocToanStack(Stack):
         )
 
         # Create a dashboard
-        dashboard = cloudwatch.Dashboard(
-            scope = self,
-            id = "WHLambdaDashboard",
+        # Reference: AWS CDK Python – aws_cloudwatch.Dashboard
+        # https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudwatch/README.html#dashboard
+        cloudwatch.Dashboard(
+            self,
+            "WHLambdaDashboard",
             dashboard_name = "URLMONITOR_DASHBOARD",
             widgets=[
                     [avail_widget], 
                     [latency_widget], 
-                    [status_code_widget]
-        
-        ]
+                    [status_code_widget],
+        ],
         )
 
         # Helper for ID-safe names (CDK IDs must avoid problematic chars)
     def _sanitize_id(self, url: str) -> str:
-        return(
-            url.replace("https://", "")
-            .replace("http://", "")
-            .replace("/", "_")
-            .replace(".", "_")[:100]
-)
+        clean = url.replace("https://", "").replace("http://", "")
+        # replace any non-alphanumeric or underscore with underscore
+
+        clean = re.sub(r'[^A-Za-z0-9_]', '_', clean)
+        # truncate to 100 chars just in case
+        
+        return clean[:100]

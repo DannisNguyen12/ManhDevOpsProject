@@ -6,7 +6,7 @@ import aws_cdk as cdk
 from dang_quoc_toan.dang_quoc_toan_stack import DangQuocToanStack
 
 
-app = cdk.App()
+app = cdk.App() 
 DangQuocToanStack(app, "DangQuocToanStack",
     # If you don't specify 'env', this stack will be environment-agnostic.
     # Account/Region-dependent features and context lookups will not work,

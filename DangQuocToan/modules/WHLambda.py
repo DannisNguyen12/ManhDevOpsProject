@@ -16,6 +16,7 @@ METRIC_STATUS = "status"
 
 
 def crawl_url(url: str):
+    print(f"Crawling {url}")
     start = time.time()
     try:
         req = urllib.request.Request(url, headers = {"User-Agent": "url-canary/1.0"})
@@ -36,6 +37,7 @@ def crawl_url(url: str):
 def lambda_handler(event, context):
     for URL in URL_LIST:
         availability, latency, status = crawl_url(URL)
+        print(f"Availability: {availability}, Latency: {latency} ms, Status: {status}")
         dimension = [{'Name': 'WebsiteName', 'Value': URL}]
         publish_metric(URL_NAMESPACE, METRIC_AVAIL, availability, dimension)
         publish_metric(URL_NAMESPACE, METRIC_LAT, latency, dimension)
