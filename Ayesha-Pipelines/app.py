@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 import os
-
 import aws_cdk as cdk
 
 from ayesha_pipelines.ayesha_pipelines_stack import AyeshaPipelinesStack
-
 
 app = cdk.App()
 AyeshaPipelinesStack(app, "AyeshaPipelinesStack",
