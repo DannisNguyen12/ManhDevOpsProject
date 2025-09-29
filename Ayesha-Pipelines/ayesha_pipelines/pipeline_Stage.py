@@ -3,7 +3,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-from ash_stack import AshStack
+from ayesha_pipelines.ash_stack import AshStack
 
 class MypipelineStage(Stage):
     

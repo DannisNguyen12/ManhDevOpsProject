@@ -5,6 +5,7 @@ from aws_cdk import (
     aws_codepipeline_actions as actions_,
 )
 from constructs import Construct
+from ayesha_pipelines.pipeline_Stage import MypipelineStage
 
 class AyeshaPipelinesStack(Stack):
 
@@ -22,3 +23,16 @@ class AyeshaPipelinesStack(Stack):
                               primary_output_directory="Ayesha-Pipelines/cdk.out")
         WHpipeline=pipelines.CodePipeline(self,"WebHealthPipeline",
                                               synth=synth)
+        unit_test = pipelines.ShellStep("unitTests",
+                                        commands=[  'cd Ayesha-Pipelines/', 
+                                                    'pip install -r requirements.txt',
+                                                    'pip install -r requirements-dev.txt',
+                                                    'pytest'],
+                                        primary_output_directory="Ayesha-Pipelines/cdk.out")
+
+        # I want to create my pipeline stages here
+        # Stage 1 -> unit test
+        # Stage 2 -> functional test
+
+        alpha = MypipelineStage(self,'alpha')
+        WHpipeline.add_stage(alpha)
