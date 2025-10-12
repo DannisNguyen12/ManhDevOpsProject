@@ -1,58 +1,324 @@
+# Website Management and Web Crawler API Documentation
 
-# Welcome to your CDK Python project!
+## Overview
+This API provides comprehensive website monitoring and web crawling capabilities. It includes CRUD operations for managing crawl targets and accessing crawl results, plus crawler management functionality.
 
-This is a blank project for CDK development with Python.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
-
-To manually create a virtualenv on MacOS and Linux:
-
+## Base URL
 ```
-$ python3 -m venv .venv
+https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
 ```
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+## Endpoints
 
-```
-$ source .venv/bin/activate
-```
+### Website Management
 
-If you are a Windows platform, you would activate the virtualenv like this:
+#### List Websites
+Get a list of all monitored websites.
 
-```
-% .venv\Scripts\activate.bat
-```
-
-Once the virtualenv is activated, you can install the required dependencies.
-
-```
-$ pip install -r requirements.txt
+**Request**
+```http
+GET /websites
 ```
 
-At this point you can now synthesize the CloudFormation template for this code.
-
+**Response**
+```json
+[
+    {
+        "id": "string",
+        "name": "string",
+        "url": "string",
+        "crawlEnabled": true,
+        "crawlInterval": 300,
+        "selectors": {
+            "title": "title",
+            "content": ".content"
+        },
+        "createdAt": "string",
+        "updatedAt": "string"
+    }
+]
 ```
-$ cdk synth
+
+#### Create Website
+Add a new website to monitor and crawl.
+
+**Request**
+```http
+POST /websites
+Content-Type: application/json
+
+{
+    "name": "string",
+    "url": "string",
+    "crawlEnabled": true,
+    "crawlInterval": 300,
+    "selectors": {
+        "title": "title",
+        "content": ".content"
+    }
+}
 ```
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
+**Response**
+```json
+{
+    "id": "string",
+    "name": "string",
+    "url": "string",
+    "crawlEnabled": true,
+    "crawlInterval": 300,
+    "selectors": {
+        "title": "title",
+        "content": ".content"
+    },
+    "createdAt": "string",
+    "updatedAt": "string"
+}
+```
 
-## Useful commands
+#### Get Website
+Get details of a specific website.
 
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+**Request**
+```http
+GET /websites/{websiteId}
+```
 
-Enjoy!
+**Response**
+```json
+{
+    "id": "string",
+    "name": "string",
+    "url": "string",
+    "crawlEnabled": true,
+    "crawlInterval": 300,
+    "selectors": {
+        "title": "title",
+        "content": ".content"
+    },
+    "createdAt": "string",
+    "updatedAt": "string"
+}
+```
+
+#### Update Website
+Update an existing website configuration.
+
+**Request**
+```http
+PUT /websites/{websiteId}
+Content-Type: application/json
+
+{
+    "name": "string",
+    "url": "string",
+    "crawlEnabled": true,
+    "crawlInterval": 300,
+    "selectors": {
+        "title": "title",
+        "content": ".content"
+    }
+}
+```
+
+**Response**
+```json
+{
+    "id": "string",
+    "name": "string",
+    "url": "string",
+    "crawlEnabled": true,
+    "crawlInterval": 300,
+    "selectors": {
+        "title": "title",
+        "content": ".content"
+    },
+    "createdAt": "string",
+    "updatedAt": "string"
+}
+```
+
+#### Delete Website
+Remove a website from monitoring.
+
+**Request**
+```http
+DELETE /websites/{websiteId}
+```
+
+**Response**
+```
+204 No Content
+```
+
+### Crawl Results
+
+#### List Crawl Results
+Get crawl results with optional filtering.
+
+**Request**
+```http
+GET /crawl-results?websiteId={websiteId}&startDate={startDate}&endDate={endDate}&limit={limit}
+```
+
+**Parameters**
+- `websiteId` (optional): Filter by website ID
+- `startDate` (optional): Filter results after this date (ISO 8601 format)
+- `endDate` (optional): Filter results before this date (ISO 8601 format)
+- `limit` (optional): Maximum number of results to return (default: 50, max: 100)
+
+**Response**
+```json
+[
+    {
+        "websiteId": "string",
+        "timestamp": "string",
+        "statusCode": 200,
+        "responseTime": 150,
+        "contentLength": 1024,
+        "title": "Page Title",
+        "content": "Extracted content...",
+        "error": null
+    }
+]
+```
+
+#### Get Crawl Result
+Get a specific crawl result by website ID and timestamp.
+
+**Request**
+```http
+GET /crawl-results/{resultId}
+```
+
+**Response**
+```json
+{
+    "websiteId": "string",
+    "timestamp": "string",
+    "statusCode": 200,
+    "responseTime": 150,
+    "contentLength": 1024,
+    "title": "Page Title",
+    "content": "Extracted content...",
+    "error": null
+}
+```
+
+#### Create Crawl Result
+Create a new crawl result (typically called by the crawler Lambda).
+
+**Request**
+```http
+POST /crawl-results
+Content-Type: application/json
+
+{
+    "websiteId": "string",
+    "timestamp": "string",
+    "statusCode": 200,
+    "responseTime": 150,
+    "contentLength": 1024,
+    "title": "Page Title",
+    "content": "Extracted content...",
+    "error": null
+}
+```
+
+**Response**
+```json
+{
+    "websiteId": "string",
+    "timestamp": "string",
+    "statusCode": 200,
+    "responseTime": 150,
+    "contentLength": 1024,
+    "title": "Page Title",
+    "content": "Extracted content...",
+    "error": null
+}
+```
+
+#### Delete Crawl Result
+Delete a specific crawl result.
+
+**Request**
+```http
+DELETE /crawl-results/{resultId}
+```
+
+**Response**
+```
+204 No Content
+```
+
+### Crawler Management
+
+#### Get Crawler Status
+Get the current status and statistics of the web crawler.
+
+**Request**
+```http
+GET /crawler/status
+```
+
+**Response**
+```json
+{
+    "status": "running",
+    "lastRun": "2024-01-15T10:30:00Z",
+    "nextRun": "2024-01-15T10:35:00Z",
+    "activeTargets": 5,
+    "totalResults": 1250,
+    "successRate": 0.95,
+    "averageResponseTime": 245
+}
+```
+
+#### Start Crawler
+Manually trigger the web crawler to run immediately.
+
+**Request**
+```http
+POST /crawler/start
+```
+
+**Response**
+```json
+{
+    "message": "Crawler started successfully",
+    "executionId": "string"
+}
+```
+
+## Error Responses
+All endpoints may return the following errors:
+
+```json
+{
+    "error": "string"
+}
+```
+
+Status codes:
+- 400: Bad Request (invalid input)
+- 404: Not Found
+- 500: Internal Server Error
+
+## Validation Rules
+- Website name is required
+- URL must start with http:// or https://
+- URL must be valid and accessible
+- Crawl interval must be between 60 and 3600 seconds
+- Selectors must be valid CSS selectors
+
+## Rate Limiting
+- Default limit: 100 requests per minute
+- Burst: 200 requests
+- Crawler endpoints: 10 requests per minute
+
+## CORS
+All endpoints support CORS with the following settings:
+- Allowed Origins: *
+- Allowed Methods: GET, POST, PUT, DELETE
+- Allowed Headers: Content-Type, Authorization

@@ -18,11 +18,17 @@ def lambda_handler(event, context):
             subject = sns.get('Subject')
             timestamp = sns.get('Timestamp')
 
+            # Parse website name from alarm subject (format: "ALARM: LatencyAlarm-Google")
+            website_name = "Unknown"
+            if subject and "Alarm-" in subject:
+                website_name = subject.split("Alarm-")[-1]
+
             item = {
-                'AlarmId': str(uuid.uuid4()),
-                'Timestamp': timestamp or datetime.utcnow().isoformat(),
-                'Subject': subject or 'CloudWatch Alarm',
-                'Message': message or json.dumps(sns)
+                'timestamp': timestamp or datetime.utcnow().isoformat(),  # Partition key
+                'website': website_name,  # Sort key
+                'alarm_id': str(uuid.uuid4()),
+                'subject': subject or 'CloudWatch Alarm',
+                'message': message or json.dumps(sns)
             }
 
             table.put_item(Item=item)
