@@ -1,57 +1,20 @@
 version: 0.2
 
-env:
-  variables:
-    # Set default stack name if not provided
-    STACK_NAME: "ManhDevOpsProjectStack"
-
 phases:
-  install:
-    commands:
-      # AWS CLI is pre-installed in CodeBuild, but ensure it's available
-      - aws --version
-
   build:
     commands:
       - |
-        set -e  # Exit on any error
-        
-        echo "🔍 Checking stack status for $STACK_NAME"
-        
-        # Get stack status with error handling
-        if ! STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text 2>/dev/null); then
-          echo "❌ Failed to get stack status or stack does not exist: $STACK_NAME"
-          echo "Available stacks:"
-          aws cloudformation list-stacks --query 'StackSummaries[?StackStatus!=`DELETE_COMPLETE`].StackName' --output text || true
-          exit 1
-        fi
-        
-        echo "📊 Current stack status: $STACK_STATUS"
-        
-        # Define states that require rollback
-        ROLLBACK_STATES=("UPDATE_ROLLBACK_COMPLETE" "UPDATE_FAILED" "CREATE_FAILED" "ROLLBACK_COMPLETE" "UPDATE_ROLLBACK_FAILED")
-        
-        if [[ " ${ROLLBACK_STATES[@]} " =~ " ${STACK_STATUS} " ]]; then
-          echo "🔄 Initiating rollback for stack $STACK_NAME..."
-          
-          if ! aws cloudformation rollback-stack --stack-name $STACK_NAME; then
-            echo "❌ Failed to initiate rollback"
-            exit 1
+        for STACK in "monitorWeb" "ApiStack"; do
+          echo "Checking stack: $STACK"
+          STATUS=$(aws cloudformation describe-stacks --stack-name $STACK --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "NOT_FOUND")
+          echo "Status: $STATUS"
+
+          if [[ "$STATUS" == "UPDATE_FAILED" || "$STATUS" == "CREATE_FAILED" || "$STATUS" == "UPDATE_ROLLBACK_FAILED" ]]; then
+            echo "Rolling back $STACK..."
+            aws cloudformation rollback-stack --stack-name $STACK
+            aws cloudformation wait stack-rollback-complete --stack-name $STACK
+            echo "$STACK rollback completed"
+          else
+            echo "$STACK no rollback needed"
           fi
-          
-          echo "⏳ Waiting for rollback to complete..."
-          if ! aws cloudformation wait stack-rollback-complete --stack-name $STACK_NAME; then
-            echo "❌ Rollback failed or timed out"
-            exit 1
-          fi
-          
-          echo "✅ Rollback completed successfully"
-          
-          # Verify final status
-          FINAL_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "Unknown")
-          echo "📊 Final stack status: $FINAL_STATUS"
-          
-        else
-          echo "ℹ️  Stack does not need rollback. Current status: $STACK_STATUS"
-          echo "💡 Rollback is only needed for failed deployment states"
-        fi
+        done

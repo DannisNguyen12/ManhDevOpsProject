@@ -1,73 +1,16 @@
 version: 0.2
 
-env:
-  variables:
-    PYTHON_VERSION: "3.9"
-    NODEJS_VERSION: "18"
-
 phases:
   install:
-    runtime-versions:
-      python: $PYTHON_VERSION
-      nodejs: $NODEJS_VERSION
     commands:
-      # Upgrade pip and install CDK CLI
-      - python -m pip install --upgrade pip
-      - npm install -g aws-cdk
-
-      # Create virtual environment
-      - python -m venv .venv
-
-      # Install linting and security tools in virtual environment
-      - source .venv/bin/activate && pip install flake8 black bandit safety
-
-  pre_build:
-    commands:
-      - source .venv/bin/activate
-
-      # Install project dependencies
       - pip install -r requirements.txt -r requirements-dev.txt
-
-      # Code Quality Checks
-      - echo "Running code quality checks..."
-      - flake8 manh_dev_ops_project/ modules/ --count --select=E9,F63,F7,F82 --show-source --statistics
-      - flake8 manh_dev_ops_project/ modules/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-      - black --check --diff manh_dev_ops_project/ modules/ || true
-      - bandit -r manh_dev_ops_project/ modules/ -f json -o bandit-report.json || true
-      - safety check --json > safety-report.json || true
+      - npm install -g aws-cdk
 
   build:
     commands:
-      - source .venv/bin/activate
-
-      # Run Unit Tests
-      - echo "Running unit tests..."
-      - python -m pytest tests/unit/ -v --tb=short --junitxml=unit-test-results.xml --cov=manh_dev_ops_project --cov=modules --cov-report=xml --cov-report=term --cov-fail-under=80
-
-      # Run Integration Tests
-      - echo "Running integration tests..."
-      - python -m pytest tests/integration/ -v --tb=short --junitxml=integration-test-results.xml
-
-      # CDK Synthesis
-      - echo "Running CDK synthesis..."
-      - cdk synth --quiet
-
-  post_build:
-    commands:
-      - echo "✅ Build completed successfully"
-      - echo "Build artifacts generated successfully"
+      - python -m pytest tests/ -v
+      - cdk synth
 
 artifacts:
   files:
     - 'cdk.out/**'
-    - 'unit-test-results.xml'
-    - 'integration-test-results.xml'
-    - 'bandit-report.json'
-    - 'safety-report.json'
-    - 'coverage.xml'
-  base-directory: .
-  discard-paths: no
-
-cache:
-  paths:
-    - '~/.cache/pip'

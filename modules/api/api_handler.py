@@ -98,7 +98,7 @@ def update_website(event):
             return create_response(400, {'error': error})
 
         # Check if website exists
-        response = tb_API.get_item(Key={'id': website_id})
+        response = get_config_table().get_item(Key={'id': website_id})
         if 'Item' not in response:
             return create_response(404, {'error': 'Website not found'})
 
@@ -108,7 +108,7 @@ def update_website(event):
             website['enabled'] = response['Item'].get('enabled', True)
 
         # Update in DynamoDB
-        tb_API.put_item(Item={**response['Item'], **website})
+        get_config_table().put_item(Item={**response['Item'], **website})
 
         return create_response(200, {**response['Item'], **website})
 
@@ -122,12 +122,12 @@ def delete_website(event):
         website_id = event['pathParameters']['websiteId']
 
         # Check if website exists
-        response = tb_API.get_item(Key={'id': website_id})
+        response = get_config_table().get_item(Key={'id': website_id})
         if 'Item' not in response:
             return create_response(404, {'error': 'Website not found'})
 
         # Delete from DynamoDB
-        tb_API.delete_item(Key={'id': website_id})
+        get_config_table().delete_item(Key={'id': website_id})
 
         return create_response(204, {})
 
