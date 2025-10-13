@@ -54,7 +54,7 @@ phases:
 
       # Validate CloudFormation templates
       - echo "Validating CloudFormation templates..."
-      - find cdk.out -name "*.template.json" -exec aws cloudformation validate-template --template-body file://{} \;
+      - for template in $(find cdk.out -name "*.template.json" 2>/dev/null); do echo "Validating $template"; aws cloudformation validate-template --template-body file://$template; done
 
   post_build:
     commands:
