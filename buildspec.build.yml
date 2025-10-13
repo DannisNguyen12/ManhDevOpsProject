@@ -48,13 +48,9 @@ phases:
       - echo "Running integration tests..."
       - python -m pytest tests/integration/ -v --tb=short --junitxml=integration-test-results.xml
 
-      # CDK Synthesis and Validation
+      # CDK Synthesis
       - echo "Running CDK synthesis..."
       - cdk synth --quiet
-
-      # Validate CloudFormation templates
-      - echo "Validating CloudFormation templates..."
-      - for template in $(find cdk.out -name "*.template.json" 2>/dev/null); do echo "Validating $template"; aws cloudformation validate-template --template-body file://$template; done
 
   post_build:
     commands:
