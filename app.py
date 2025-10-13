@@ -3,15 +3,14 @@ import os
 
 import aws_cdk as cdk
 
-from manh_dev_ops_project.website_monitor_stack import WebMonitoringStack
-from manh_dev_ops_project.pipeline_stack import PipelineStack
-from manh_dev_ops_project.api_stack import ApiStack
+from manh_dev_ops_project.monitor import MonitorStack
+from manh_dev_ops_project.api import ApiStack
 
 
 app = cdk.App()
 
 # Create monitoring stack first to get access to its config table
-monitoring_stack = WebMonitoringStack(app, "monitorWeb",
+monitoring_stack = MonitorStack(app, "monitorWeb",
     env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
 )
 
@@ -19,7 +18,6 @@ monitoring_stack = WebMonitoringStack(app, "monitorWeb",
 # Pass the config table from monitoring stack to API stack
 ApiStack(app, "ApiStack",
     config_table=monitoring_stack.web_table,
-    crawl_results_table=monitoring_stack.crawl_results_table,
     env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
 )
 
