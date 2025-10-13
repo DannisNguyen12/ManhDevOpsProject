@@ -55,9 +55,7 @@ phases:
   post_build:
     commands:
       - echo "✅ Build completed successfully"
-      - echo "Test Results:"
-      - echo "- Unit tests: $(grep -c '<testcase' unit-test-results.xml 2>/dev/null || echo '0') tests"
-      - echo "- Integration tests: $(grep -c '<testcase' integration-test-results.xml 2>/dev/null || echo '0') tests"
+      - echo "Build artifacts generated successfully"
 
 artifacts:
   files:
