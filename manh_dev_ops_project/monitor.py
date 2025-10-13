@@ -94,7 +94,7 @@ class MonitorStack(Stack):
                 "cloudwatch:PutMetricAlarm",
                 "cloudwatch:DescribeAlarms"
             ],
-            resources=["*"]  # CloudWatch doesn't support resource-level permissions for these actions
+            resources=["*"]
         ))
 
         # ------------ CloudWatch Dashboard Service -----------
