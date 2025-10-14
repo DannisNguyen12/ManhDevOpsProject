@@ -147,30 +147,30 @@ class WebsiteMonitor:
                 logger.info(f"Alarms already exist for {website_name}")
                 return
 
-            # Create availability alarm
+            # Create availability alarm: triggers when availability = 0
             self.cloudwatch.put_metric_alarm(
                 AlarmName=f"{website_name}-Availability",
-                AlarmDescription=f"Alert when {website_name} availability drops below 95%",
+                AlarmDescription=f"Alert when {website_name} is not available (availability = 0)",
                 ActionsEnabled=True,
                 AlarmActions=[os.environ.get('ALARM_SNS_TOPIC_ARN', '')],
                 MetricName='Availability',
                 Namespace='WebsiteMonitoring',
-                Statistic='Average',
+                Statistic='Minimum',
                 Dimensions=[
                     {'Name': 'WebsiteId', 'Value': website_id},
                     {'Name': 'WebsiteName', 'Value': website_name}
                 ],
                 Period=300,  # 5 minutes
-                EvaluationPeriods=3,
-                DatapointsToAlarm=2,
-                Threshold=0.95,
+                EvaluationPeriods=1,
+                DatapointsToAlarm=1,
+                Threshold=1,
                 ComparisonOperator='LessThanThreshold'
             )
 
-            # Create latency alarm
+            # Create latency alarm: triggers when latency > 400ms
             self.cloudwatch.put_metric_alarm(
                 AlarmName=f"{website_name}-Latency",
-                AlarmDescription=f"Alert when {website_name} latency exceeds 2000ms",
+                AlarmDescription=f"Alert when {website_name} latency exceeds 400ms",
                 ActionsEnabled=True,
                 AlarmActions=[os.environ.get('ALARM_SNS_TOPIC_ARN', '')],
                 MetricName='Latency',
@@ -181,9 +181,9 @@ class WebsiteMonitor:
                     {'Name': 'WebsiteName', 'Value': website_name}
                 ],
                 Period=300,  # 5 minutes
-                EvaluationPeriods=2,
+                EvaluationPeriods=1,
                 DatapointsToAlarm=1,
-                Threshold=2000,
+                Threshold=400,
                 ComparisonOperator='GreaterThanThreshold'
             )
 

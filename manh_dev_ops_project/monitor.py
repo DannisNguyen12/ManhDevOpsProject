@@ -157,29 +157,29 @@ class MonitorStack(Stack):
         )
 
         # ------------ CloudWatch Alarms for Website Monitoring -----------
-        # Create composite alarm for overall website availability across all sites
+        # Create alarm when website is not available (availability = 0)
         availability_alarm = cloudwatch.Alarm(
             self, "WebsiteAvailabilityAlarm",
             alarm_name="WebsiteAvailabilityAlarm",
-            alarm_description="Alert when overall website availability drops below 95%",
+            alarm_description="Alert when website is not available (availability = 0)",
             metric=cloudwatch.Metric(
                 namespace="WebsiteMonitoring",
                 metric_name="Availability",
-                statistic="Average",
+                statistic="Minimum",
                 period=Duration.minutes(5)
             ),
-            threshold=0.95,
+            threshold=1,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-            evaluation_periods=3,
-            datapoints_to_alarm=2
+            evaluation_periods=1,
+            datapoints_to_alarm=1
         )
         availability_alarm.add_alarm_action(cloudwatch_actions.SnsAction(self.alarm_topic))
 
-        # Create alarm for high latency across all websites
+        # Create alarm when latency is greater than 400ms
         latency_alarm = cloudwatch.Alarm(
             self, "WebsiteLatencyAlarm",
             alarm_name="WebsiteLatencyAlarm",
-            alarm_description="Alert when average website latency exceeds 2000ms",
+            alarm_description="Alert when website latency exceeds 400ms",
             metric=cloudwatch.Metric(
                 namespace="WebsiteMonitoring",
                 metric_name="Latency",
@@ -188,7 +188,7 @@ class MonitorStack(Stack):
             ),
             threshold=400,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            evaluation_periods=2,
+            evaluation_periods=1,
             datapoints_to_alarm=1
         )
         latency_alarm.add_alarm_action(cloudwatch_actions.SnsAction(self.alarm_topic))
