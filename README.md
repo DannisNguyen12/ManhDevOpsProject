@@ -83,7 +83,150 @@ pytest tests/performance/ -v
 pytest --cov=manh_dev_ops_project --cov-report=html
 ```
 
-## 📊 Monitoring and Observability
+## � How to Use
+
+### Getting Started with Website Monitoring
+
+After deploying the system, you can start monitoring websites by adding them through the API.
+
+#### 1. Find Your API Endpoint
+
+After deployment, get your API Gateway URL:
+```bash
+# Get API Gateway URL
+aws apigateway get-rest-apis --query 'items[?name==`Website Management API`].id' --output text
+
+# The full URL will be: https://{api-id}.execute-api.{region}.amazonaws.com/prod
+```
+
+#### 2. Add Your First Website
+
+Use the following curl command to add a website for monitoring:
+
+```bash
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/websites \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Google",
+    "url": "https://www.google.com",
+    "enabled": true
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "Google",
+  "url": "https://www.google.com",
+  "enabled": true,
+  "createdAt": "2024-01-15T10:00:00.000Z",
+  "updatedAt": "2024-01-15T10:00:00.000Z"
+}
+```
+
+#### 3. Add More Websites
+
+Add additional websites to monitor:
+
+```bash
+# Add Facebook
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/websites \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Facebook",
+    "url": "https://www.facebook.com",
+    "enabled": true
+  }'
+
+# Add GitHub
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/websites \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "GitHub",
+    "url": "https://github.com",
+    "enabled": true
+  }'
+```
+
+#### 4. List All Websites
+
+View all websites currently being monitored:
+
+```bash
+curl https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/websites
+```
+
+**Response:**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Google",
+    "url": "https://www.google.com",
+    "enabled": true,
+    "createdAt": "2024-01-15T10:00:00.000Z",
+    "updatedAt": "2024-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Facebook",
+    "url": "https://www.facebook.com",
+    "enabled": true,
+    "createdAt": "2024-01-15T10:05:00.000Z",
+    "updatedAt": "2024-01-15T10:05:00.000Z"
+  }
+]
+```
+
+#### 5. Update a Website
+
+Modify website settings:
+
+```bash
+curl -X PUT https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/websites/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Google Search",
+    "enabled": false
+  }'
+```
+
+#### 6. Delete a Website
+
+Remove a website from monitoring:
+
+```bash
+curl -X DELETE https://your-api-id.execute-api.us-east-1.amazonaws.com/prod/websites/550e8400-e29b-41d4-a716-446655440000
+```
+
+#### 7. Monitor Your Websites
+
+Once websites are added, the system will automatically:
+
+- **Check availability every 5 minutes** (via EventBridge scheduled Lambda)
+- **Send metrics to CloudWatch** (availability, latency, status codes)
+- **Create alarms** for each website (availability < 95%, latency > 2000ms)
+- **Send notifications** via SNS when alarms trigger
+
+**View metrics in CloudWatch:**
+```bash
+# Check recent metrics
+aws cloudwatch get-metric-statistics \
+  --namespace WebsiteMonitoring \
+  --metric-name Availability \
+  --start-time 2024-01-15T00:00:00Z \
+  --end-time 2024-01-15T23:59:59Z \
+  --period 300 \
+  --statistics Average
+```
+
+**Check alarm status:**
+```bash
+aws cloudwatch describe-alarms --alarm-name-prefix "Google-"
+```
+
+## �📊 Monitoring and Observability
 
 ### CloudWatch Dashboards
 - **Website Monitoring**: Availability and latency metrics per website
