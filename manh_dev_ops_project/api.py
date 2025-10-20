@@ -15,6 +15,8 @@ class ApiStack(Stack):
         self.config_table = config_table
 
         # Create API Lambda functions
+        # Lambda function for CRUD operations on website configurations
+        # reference: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_lambda/Function.html
         self.fn_CRUD = _lambda.Function(
             self, "WebsiteCrudLambda",
             runtime=_lambda.Runtime.PYTHON_3_9,
@@ -27,9 +29,11 @@ class ApiStack(Stack):
         )
 
         # Grant DynamoDB permissions
+        # Grant read/write permissions to the config table
         config_table.grant_read_write_data(self.fn_CRUD)
 
         # Create API Gateway
+        # reference: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_apigateway/RestApi.html
         api = apigw.RestApi(
             self, "WebsiteManagementApi",
             rest_api_name="Website Management API",
@@ -41,9 +45,12 @@ class ApiStack(Stack):
         )
 
         # Create API resources and methods
+        # Resource for /websites
+        # reference: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_apigateway/Resource.html
         websites = api.root.add_resource("websites")
         
         # GET /websites (List all websites)
+        # reference: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_apigateway/LambdaIntegration.html
         websites.add_method(
             "GET",
             apigw.LambdaIntegration(self.fn_CRUD)

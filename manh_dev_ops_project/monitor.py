@@ -61,9 +61,7 @@ class MonitorStack(Stack):
             handler="monitor.lambda_handler",
             environment={
                 "WEBSITES_TABLE": self.web_table.table_name,
-                "ALARM_SNS_TOPIC_ARN": self.alarm_topic.topic_arn,
-                "MAX_CRAWL_DEPTH": "2",
-                "MAX_PAGES_PER_SITE": "10"
+                "ALARM_SNS_TOPIC_ARN": self.alarm_topic.topic_arn
             }
         )
 
@@ -158,6 +156,7 @@ class MonitorStack(Stack):
 
         # ------------ CloudWatch Alarms for Website Monitoring -----------
         # Create alarm when website is not available (availability = 0)
+        # Reference: https://docs.aws.amazon.com/cdk/api/v2/python/aws_cdk.aws_cloudwatch/Alarm.html
         availability_alarm = cloudwatch.Alarm(
             self, "WebsiteAvailabilityAlarm",
             alarm_name="WebsiteAvailabilityAlarm",
