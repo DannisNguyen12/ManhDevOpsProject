@@ -10,6 +10,7 @@ phases:
     commands:
       - python -m pytest tests/ -v
       - cdk synth
+      - cdk deploy --all
 
 artifacts:
   files:
