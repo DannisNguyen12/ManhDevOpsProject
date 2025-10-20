@@ -225,3 +225,6 @@ def lambda_handler(event, context):
             'timestamp': str(int(time.time()))
         })
     }
+
+
+# for testing
