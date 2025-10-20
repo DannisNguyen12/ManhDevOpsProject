@@ -191,3 +191,6 @@ class MonitorStack(Stack):
             datapoints_to_alarm=1
         )
         latency_alarm.add_alarm_action(cloudwatch_actions.SnsAction(self.alarm_topic))
+
+
+  
